@@ -760,8 +760,8 @@
 
         function getScaledDimensions(metrics) {
             if (!fvScaleMode || !metrics.length) return { w: FV_BASE_SIZE, h: FV_BASE_SIZE };
-            var h = Math.max(FV_SCALE_MIN, Math.round(metrics.length * FV_SCALE_PPM));
-            var w = Math.max(FV_SCALE_MIN, Math.round(metrics.beam * FV_SCALE_PPM));
+            var w = Math.max(FV_SCALE_MIN, Math.round(metrics.length * FV_SCALE_PPM));
+            var h = Math.max(FV_SCALE_MIN, Math.round(metrics.beam * FV_SCALE_PPM));
             return { w: w, h: h };
         }
 
