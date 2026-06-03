@@ -740,9 +740,15 @@
 
         const CARD_GAP = 20;
 
-        var lengths = fleet.map(function (f) { return f.length || 0; }).filter(function (l) { return l > 0; });
+        function resolveLength(item) {
+            if (item.length && item.length > 0) return item.length;
+            var dbShip = allShips.find(function (s) { return s.slug === item.slug; });
+            if (dbShip && dbShip.metrics && dbShip.metrics.length) return dbShip.metrics.length;
+            return 0;
+        }
+
+        var lengths = fleet.map(function (f) { return resolveLength(f); }).filter(function (l) { return l > 0; });
         var maxLength = lengths.length > 0 ? Math.max.apply(null, lengths) : 1;
-        var minLength = lengths.length > 0 ? Math.min.apply(null, lengths) : 1;
 
         function getScaledSize(shipLength) {
             if (!fvScaleMode || !shipLength || shipLength <= 0) return FV_BASE_SIZE;
@@ -759,7 +765,8 @@
             el.className = 'fv-ship';
             el.dataset.fleetId = item.id;
 
-            var holoSize = getScaledSize(item.length);
+            var shipLength = resolveLength(item);
+            var holoSize = getScaledSize(shipLength);
 
             let x, y;
             if (positions[item.id]) {
@@ -780,7 +787,7 @@
                 : '<span style="font-size:0.5rem;color:var(--text-muted)">No crew</span>';
 
             const holoId = 'fv-holo-' + item.id.replace(/[^a-zA-Z0-9]/g, '_');
-            var lengthLabel = item.length ? item.length + 'm' : '';
+            var lengthLabel = shipLength ? shipLength + 'm' : '';
 
             el.innerHTML =
                 '<div class="fv-ship-inner" style="min-width:' + (holoSize + 16) + 'px">' +
