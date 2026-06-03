@@ -820,28 +820,30 @@
             canvas.appendChild(el);
 
             if (item.holo) {
-                loadFvHolo(holoId, item.holo, Math.max(dims.w, dims.h));
+                loadFvHolo(holoId, item.holo, dims.w, dims.h);
             }
         });
 
         initFvDrag();
     }
 
-    function loadFvHolo(containerId, holoUrl, renderSize) {
+    function loadFvHolo(containerId, holoUrl, renderW, renderH) {
         var container = document.getElementById(containerId);
         if (!container) return;
 
-        var size = renderSize || FV_BASE_SIZE;
+        var w = renderW || FV_BASE_SIZE;
+        var h = renderH || FV_BASE_SIZE;
+        var aspect = w / h;
 
         var scene = new THREE.Scene();
         scene.background = new THREE.Color(0x050a12);
 
-        var camera = new THREE.OrthographicCamera(-12, 12, 12, -12, 0.1, 500);
+        var camera = new THREE.OrthographicCamera(-12 * aspect, 12 * aspect, 12, -12, 0.1, 500);
         camera.position.set(0, 50, 0);
         camera.lookAt(0, 0, 0);
 
         var renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-        renderer.setSize(size, size);
+        renderer.setSize(w, h);
         renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         renderer.outputEncoding = THREE.sRGBEncoding;
 
@@ -890,11 +892,19 @@
 
             var newBox = new THREE.Box3().setFromObject(model);
             var newSize = newBox.getSize(new THREE.Vector3());
-            var halfMax = Math.max(newSize.x, newSize.z) / 2 + 1;
-            camera.left = -halfMax;
-            camera.right = halfMax;
-            camera.top = halfMax;
-            camera.bottom = -halfMax;
+            var halfX = newSize.x / 2 + 1;
+            var halfZ = newSize.z / 2 + 1;
+            if (aspect >= 1) {
+                camera.left = -halfX;
+                camera.right = halfX;
+                camera.top = halfX / aspect;
+                camera.bottom = -halfX / aspect;
+            } else {
+                camera.left = -halfZ * aspect;
+                camera.right = halfZ * aspect;
+                camera.top = halfZ;
+                camera.bottom = -halfZ;
+            }
             camera.updateProjectionMatrix();
 
             renderer.render(scene, camera);
