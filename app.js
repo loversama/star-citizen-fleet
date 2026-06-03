@@ -801,20 +801,24 @@
 
             const holoId = 'fv-holo-' + item.id.replace(/[^a-zA-Z0-9]/g, '_');
             var lengthLabel = metrics.length ? metrics.length + 'm' : '';
-            var cardMaxW = Math.max(dims.w, dims.h);
+            var scale = fvScaleMode ? Math.max(dims.w, dims.h) / FV_BASE_SIZE : 1;
+            var nameFz = Math.max(0.45, Math.min(1.4, 0.65 * scale));
+            var mfrFz = Math.max(0.35, Math.min(1.0, 0.55 * scale));
+            var crewFz = Math.max(0.35, Math.min(0.9, 0.55 * scale));
+            var pad = Math.max(4, Math.round(6 * scale));
 
             el.innerHTML =
-                '<div class="fv-ship-inner" style="min-width:' + (dims.w + 16) + 'px">' +
+                '<div class="fv-ship-inner" style="min-width:' + (dims.w + pad * 2) + 'px;padding:' + pad + 'px">' +
                     '<div class="fv-ship-holo" id="' + holoId + '" style="width:' + dims.w + 'px;height:' + dims.h + 'px">' +
                         (item.holo
                             ? '<div class="fv-holo-loading"></div>'
                             : (item.topView || item.image
                                 ? '<img src="' + (item.topView || item.image) + '" alt="' + escapeHtml(item.name) + '">'
-                                : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem">&#128640;</div>')) +
+                                : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:' + (2 * scale) + 'rem">&#128640;</div>')) +
                     '</div>' +
-                    '<div class="fv-ship-name" title="' + escapeHtml(item.name) + '" style="max-width:' + cardMaxW + 'px">' + escapeHtml(item.name) + '</div>' +
-                    '<div class="fv-ship-mfr">' + escapeHtml(item.manufacturer) + (lengthLabel ? ' &middot; ' + lengthLabel : '') + '</div>' +
-                    '<div class="fv-ship-crew" style="max-width:' + cardMaxW + 'px">' + crewHtml + '</div>' +
+                    '<div class="fv-ship-name" title="' + escapeHtml(item.name) + '" style="max-width:' + dims.w + 'px;font-size:' + nameFz + 'rem;margin-top:' + Math.round(4 * scale) + 'px">' + escapeHtml(item.name) + '</div>' +
+                    '<div class="fv-ship-mfr" style="font-size:' + mfrFz + 'rem">' + escapeHtml(item.manufacturer) + (lengthLabel ? ' &middot; ' + lengthLabel : '') + '</div>' +
+                    '<div class="fv-ship-crew" style="max-width:' + dims.w + 'px;font-size:' + crewFz + 'rem;gap:' + Math.max(1, Math.round(2 * scale)) + 'px">' + crewHtml + '</div>' +
                 '</div>';
 
             canvas.appendChild(el);
