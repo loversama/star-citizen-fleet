@@ -634,6 +634,16 @@
             loadingEl.style.display = 'none';
             errorEl.style.display = 'block';
             errorEl.querySelector('p').textContent = 'Failed to load holographic model';
+            var retryBtn = document.getElementById('holo-retry-btn');
+            retryBtn.style.display = 'inline-flex';
+            retryBtn.onclick = function () {
+                retryBtn.style.display = 'none';
+                errorEl.style.display = 'none';
+                loadingEl.style.display = 'block';
+                delete holoCache[url];
+                cleanupHolo();
+                initHoloViewer(url);
+            };
         }
 
         function animate() {
@@ -653,17 +663,14 @@
         holoDracoLoader.setDecoderConfig({ type: 'js' });
 
         try {
-            const response = await fetch(url, { mode: 'cors', redirect: 'follow' });
-            if (!response.ok) throw new Error('HTTP ' + response.status);
-            const arrayBuffer = await response.arrayBuffer();
+            const arrayBuffer = await fetchHoloModel(url);
             const loader = new THREE.GLTFLoader();
             loader.setDRACOLoader(holoDracoLoader);
             loader.parse(arrayBuffer, '', onModelLoaded, onModelError);
         } catch (fetchErr) {
-            console.warn('Fetch GLTF failed, trying direct load:', fetchErr);
-            const loader = new THREE.GLTFLoader();
-            loader.setDRACOLoader(holoDracoLoader);
-            loader.load(url, onModelLoaded, undefined, onModelError);
+            console.warn('Fetch GLTF failed:', fetchErr);
+            delete holoCache[url];
+            onModelError(fetchErr);
         }
     }
 
@@ -700,6 +707,17 @@
     }
 
     // ── Fleet View ──
+
+    var holoCache = {};
+
+    async function fetchHoloModel(url) {
+        if (holoCache[url]) return holoCache[url];
+        var response = await fetch(url, { mode: 'cors', redirect: 'follow' });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        var buf = await response.arrayBuffer();
+        holoCache[url] = buf;
+        return buf;
+    }
 
     let fvZoom = 1;
     let fvScaleMode = false;
@@ -910,23 +928,28 @@
 
         function onError() {
             if (!container.parentNode) { renderer.dispose(); dracoLoader.dispose(); return; }
-            container.innerHTML = container.closest('.fv-ship').querySelector('.fv-ship-name')
-                ? '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem">&#128640;</div>'
-                : '';
             renderer.dispose();
             dracoLoader.dispose();
+            container.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">' +
+                '<span style="font-size:1.2rem">&#128640;</span>' +
+                '<button class="fv-retry-btn" style="font-family:Rajdhani,sans-serif;font-size:0.6rem;padding:2px 8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:3px;color:var(--accent);cursor:pointer">Retry</button>' +
+                '</div>';
+            container.querySelector('.fv-retry-btn').addEventListener('click', function (e) {
+                e.stopPropagation();
+                container.innerHTML = '<div class="fv-holo-loading"></div>';
+                loadFvHolo(containerId, holoUrl, renderW, renderH);
+            });
         }
 
         (async function () {
             try {
-                var response = await fetch(holoUrl, { mode: 'cors', redirect: 'follow' });
-                if (!response.ok) throw new Error('HTTP ' + response.status);
-                var arrayBuffer = await response.arrayBuffer();
+                var arrayBuffer = await fetchHoloModel(holoUrl);
                 var loader = new THREE.GLTFLoader();
                 loader.setDRACOLoader(dracoLoader);
                 loader.parse(arrayBuffer, '', onLoaded, onError);
             } catch (e) {
                 console.warn('FV holo fetch failed:', e);
+                delete holoCache[holoUrl];
                 onError();
             }
         })();
