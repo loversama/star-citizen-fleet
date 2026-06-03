@@ -640,7 +640,7 @@
                 retryBtn.style.display = 'none';
                 errorEl.style.display = 'none';
                 loadingEl.style.display = 'block';
-                delete holoCache[url];
+                delete holoMemCache[url]; deleteFromHoloDB(url);
                 cleanupHolo();
                 initHoloViewer(url);
             };
@@ -669,7 +669,7 @@
             loader.parse(arrayBuffer, '', onModelLoaded, onModelError);
         } catch (fetchErr) {
             console.warn('Fetch GLTF failed:', fetchErr);
-            delete holoCache[url];
+            delete holoMemCache[url]; deleteFromHoloDB(url);
             onModelError(fetchErr);
         }
     }
@@ -708,10 +708,52 @@
 
     // ── Fleet View ──
 
-    var holoCache = {};
+    var holoMemCache = {};
+
+    function openHoloDB() {
+        return new Promise(function (resolve, reject) {
+            var req = indexedDB.open('sc-holo-cache', 1);
+            req.onupgradeneeded = function () { req.result.createObjectStore('models'); };
+            req.onsuccess = function () { resolve(req.result); };
+            req.onerror = function () { reject(req.error); };
+        });
+    }
+
+    async function getFromHoloDB(url) {
+        try {
+            var db = await openHoloDB();
+            return await new Promise(function (resolve, reject) {
+                var tx = db.transaction('models', 'readonly');
+                var req = tx.objectStore('models').get(url);
+                req.onsuccess = function () { resolve(req.result || null); };
+                req.onerror = function () { resolve(null); };
+            });
+        } catch (e) { return null; }
+    }
+
+    async function saveToHoloDB(url, buf) {
+        try {
+            var db = await openHoloDB();
+            var tx = db.transaction('models', 'readwrite');
+            tx.objectStore('models').put(buf, url);
+        } catch (e) { /* silent */ }
+    }
+
+    async function deleteFromHoloDB(url) {
+        try {
+            var db = await openHoloDB();
+            var tx = db.transaction('models', 'readwrite');
+            tx.objectStore('models').delete(url);
+        } catch (e) { /* silent */ }
+    }
 
     async function fetchHoloModel(url) {
-        if (holoCache[url]) return holoCache[url];
+        if (holoMemCache[url]) return holoMemCache[url];
+        var cached = await getFromHoloDB(url);
+        if (cached) {
+            holoMemCache[url] = cached;
+            return cached;
+        }
         var controller = new AbortController();
         var timeout = setTimeout(function () { controller.abort(); }, 15000);
         try {
@@ -719,7 +761,8 @@
             clearTimeout(timeout);
             if (!response.ok) throw new Error('HTTP ' + response.status);
             var buf = await response.arrayBuffer();
-            holoCache[url] = buf;
+            holoMemCache[url] = buf;
+            saveToHoloDB(url, buf);
             return buf;
         } catch (e) {
             clearTimeout(timeout);
@@ -958,7 +1001,7 @@
                 loader.parse(arrayBuffer, '', onLoaded, onError);
             } catch (e) {
                 console.warn('FV holo fetch failed:', e);
-                delete holoCache[holoUrl];
+                delete holoMemCache[holoUrl]; deleteFromHoloDB(holoUrl);
                 onError();
             }
         })();
