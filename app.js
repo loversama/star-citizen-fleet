@@ -778,6 +778,36 @@
     const FV_SCALE_PPM = 2.5;
     const FV_SCALE_MIN = 80;
 
+    var fvSharedDraco = null;
+    function getSharedDraco() {
+        if (!fvSharedDraco) {
+            fvSharedDraco = new THREE.DRACOLoader();
+            fvSharedDraco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
+            fvSharedDraco.setDecoderConfig({ type: 'js' });
+        }
+        return fvSharedDraco;
+    }
+
+    var fvLoadQueue = [];
+    var fvLoadActive = 0;
+    var FV_MAX_CONCURRENT = 2;
+
+    function fvEnqueue(fn) {
+        fvLoadQueue.push(fn);
+        fvProcessQueue();
+    }
+
+    function fvProcessQueue() {
+        while (fvLoadActive < FV_MAX_CONCURRENT && fvLoadQueue.length > 0) {
+            fvLoadActive++;
+            var task = fvLoadQueue.shift();
+            task().finally(function () {
+                fvLoadActive--;
+                fvProcessQueue();
+            });
+        }
+    }
+
     function getFleetViewPositions() {
         try {
             return JSON.parse(localStorage.getItem('sc-fv-positions')) || {};
@@ -904,114 +934,119 @@
         var container = document.getElementById(containerId);
         if (!container) return;
 
-        var w = renderW || FV_BASE_SIZE;
-        var h = renderH || FV_BASE_SIZE;
+        fvEnqueue(function () {
+            return new Promise(function (queueDone) {
+                var cont = document.getElementById(containerId);
+                if (!cont || !cont.parentNode) { queueDone(); return; }
 
-        var scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x050a12);
+                var w = renderW || FV_BASE_SIZE;
+                var h = renderH || FV_BASE_SIZE;
 
-        var camera = new THREE.OrthographicCamera(-12, 12, 12, -12, 0.1, 500);
-        camera.position.set(0, 50, 0);
-        camera.lookAt(0, 0, 0);
+                var scene = new THREE.Scene();
+                scene.background = new THREE.Color(0x050a12);
 
-        var renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
-        renderer.setSize(w, h);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-        renderer.outputEncoding = THREE.sRGBEncoding;
+                var camera = new THREE.OrthographicCamera(-12, 12, 12, -12, 0.1, 500);
+                camera.position.set(0, 50, 0);
+                camera.lookAt(0, 0, 0);
 
-        var ambient = new THREE.AmbientLight(0x406080, 1.0);
-        scene.add(ambient);
+                var renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+                renderer.setSize(w, h);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                renderer.outputEncoding = THREE.sRGBEncoding;
 
-        var dir1 = new THREE.DirectionalLight(0x00d4ff, 1.5);
-        dir1.position.set(0, 50, 0);
-        scene.add(dir1);
+                var ambient = new THREE.AmbientLight(0x406080, 1.0);
+                scene.add(ambient);
 
-        var dir2 = new THREE.DirectionalLight(0x7dd3fc, 0.4);
-        dir2.position.set(5, 20, 5);
-        scene.add(dir2);
+                var dir1 = new THREE.DirectionalLight(0x00d4ff, 1.5);
+                dir1.position.set(0, 50, 0);
+                scene.add(dir1);
 
-        var dracoLoader = new THREE.DRACOLoader();
-        dracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
-        dracoLoader.setDecoderConfig({ type: 'js' });
+                var dir2 = new THREE.DirectionalLight(0x7dd3fc, 0.4);
+                dir2.position.set(5, 20, 5);
+                scene.add(dir2);
 
-        function onLoaded(gltf) {
-            if (!container.parentNode) { renderer.dispose(); dracoLoader.dispose(); return; }
+                function onLoaded(gltf) {
+                    if (!cont.parentNode) { renderer.dispose(); queueDone(); return; }
 
-            var model = gltf.scene;
-            var box = new THREE.Box3().setFromObject(model);
-            var bSize = box.getSize(new THREE.Vector3());
-            var center = box.getCenter(new THREE.Vector3());
+                    var model = gltf.scene;
+                    var box = new THREE.Box3().setFromObject(model);
+                    var bSize = box.getSize(new THREE.Vector3());
+                    var center = box.getCenter(new THREE.Vector3());
 
-            var maxDim = Math.max(bSize.x, bSize.z);
-            var scale = 20 / maxDim;
-            model.scale.setScalar(scale);
-            model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
+                    var maxDim = Math.max(bSize.x, bSize.z);
+                    var scale = 20 / maxDim;
+                    model.scale.setScalar(scale);
+                    model.position.set(-center.x * scale, -center.y * scale, -center.z * scale);
 
-            var holoMat = new THREE.MeshPhongMaterial({
-                color: 0x00bbdd,
-                emissive: 0x004455,
-                specular: 0x00d4ff,
-                shininess: 60,
-                transparent: true,
-                opacity: 0.9,
-                side: THREE.DoubleSide
+                    var holoMat = new THREE.MeshPhongMaterial({
+                        color: 0x00bbdd,
+                        emissive: 0x004455,
+                        specular: 0x00d4ff,
+                        shininess: 60,
+                        transparent: true,
+                        opacity: 0.9,
+                        side: THREE.DoubleSide
+                    });
+                    model.traverse(function (child) {
+                        if (child.isMesh) child.material = holoMat;
+                    });
+
+                    scene.add(model);
+
+                    var newBox = new THREE.Box3().setFromObject(model);
+                    var newSize = newBox.getSize(new THREE.Vector3());
+                    var halfMax = Math.max(newSize.x, newSize.z) / 2 + 1;
+                    camera.left = -halfMax;
+                    camera.right = halfMax;
+                    camera.top = halfMax;
+                    camera.bottom = -halfMax;
+                    camera.updateProjectionMatrix();
+
+                    renderer.render(scene, camera);
+                    cont.innerHTML = '';
+                    cont.appendChild(renderer.domElement);
+
+                    fvMiniRenderers.push({ renderer: renderer, scene: scene });
+                    queueDone();
+                }
+
+                function onError() {
+                    if (!cont.parentNode) { renderer.dispose(); queueDone(); return; }
+                    renderer.dispose();
+                    cont.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">' +
+                        '<span style="font-size:1.2rem">&#128640;</span>' +
+                        '<button class="fv-retry-btn" style="font-family:Rajdhani,sans-serif;font-size:0.6rem;padding:2px 8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:3px;color:var(--accent);cursor:pointer">Retry</button>' +
+                        '</div>';
+                    cont.querySelector('.fv-retry-btn').addEventListener('click', function (e) {
+                        e.stopPropagation();
+                        cont.innerHTML = '<div class="fv-holo-loading"></div>';
+                        loadFvHolo(containerId, holoUrl, renderW, renderH);
+                    });
+                    queueDone();
+                }
+
+                (async function () {
+                    try {
+                        var arrayBuffer = await fetchHoloModel(holoUrl);
+                        var loader = new THREE.GLTFLoader();
+                        loader.setDRACOLoader(getSharedDraco());
+                        loader.parse(arrayBuffer, '', onLoaded, onError);
+                    } catch (e) {
+                        console.warn('FV holo fetch failed:', e);
+                        delete holoMemCache[holoUrl]; deleteFromHoloDB(holoUrl);
+                        onError();
+                    }
+                })();
             });
-            model.traverse(function (child) {
-                if (child.isMesh) child.material = holoMat;
-            });
-
-            scene.add(model);
-
-            var newBox = new THREE.Box3().setFromObject(model);
-            var newSize = newBox.getSize(new THREE.Vector3());
-            var halfMax = Math.max(newSize.x, newSize.z) / 2 + 1;
-            camera.left = -halfMax;
-            camera.right = halfMax;
-            camera.top = halfMax;
-            camera.bottom = -halfMax;
-            camera.updateProjectionMatrix();
-
-            renderer.render(scene, camera);
-            container.innerHTML = '';
-            container.appendChild(renderer.domElement);
-
-            fvMiniRenderers.push({ renderer: renderer, scene: scene, dracoLoader: dracoLoader });
-        }
-
-        function onError() {
-            if (!container.parentNode) { renderer.dispose(); dracoLoader.dispose(); return; }
-            renderer.dispose();
-            dracoLoader.dispose();
-            container.innerHTML = '<div style="width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px">' +
-                '<span style="font-size:1.2rem">&#128640;</span>' +
-                '<button class="fv-retry-btn" style="font-family:Rajdhani,sans-serif;font-size:0.6rem;padding:2px 8px;background:var(--bg-secondary);border:1px solid var(--border);border-radius:3px;color:var(--accent);cursor:pointer">Retry</button>' +
-                '</div>';
-            container.querySelector('.fv-retry-btn').addEventListener('click', function (e) {
-                e.stopPropagation();
-                container.innerHTML = '<div class="fv-holo-loading"></div>';
-                loadFvHolo(containerId, holoUrl, renderW, renderH);
-            });
-        }
-
-        (async function () {
-            try {
-                var arrayBuffer = await fetchHoloModel(holoUrl);
-                var loader = new THREE.GLTFLoader();
-                loader.setDRACOLoader(dracoLoader);
-                loader.parse(arrayBuffer, '', onLoaded, onError);
-            } catch (e) {
-                console.warn('FV holo fetch failed:', e);
-                delete holoMemCache[holoUrl]; deleteFromHoloDB(holoUrl);
-                onError();
-            }
-        })();
+        });
     }
 
     function cleanupFvRenderers() {
+        fvLoadQueue = [];
+        fvLoadActive = 0;
         while (fvMiniRenderers.length > 0) {
             var entry = fvMiniRenderers.pop();
             if (entry.renderer) entry.renderer.dispose();
-            if (entry.dracoLoader) entry.dracoLoader.dispose();
             if (entry.scene) {
                 entry.scene.traverse(function (obj) {
                     if (obj.geometry) obj.geometry.dispose();
