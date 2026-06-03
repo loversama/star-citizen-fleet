@@ -706,7 +706,7 @@
     const fvMiniRenderers = [];
     const FV_BASE_SIZE = 140;
     const FV_SCALE_PPM = 2.5;
-    const FV_SCALE_MIN = 30;
+    const FV_SCALE_MIN = 80;
 
     function getFleetViewPositions() {
         try {
