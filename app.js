@@ -1148,6 +1148,7 @@
         });
         document.getElementById('fv-scale-toggle').addEventListener('change', function () {
             fvScaleMode = this.checked;
+            localStorage.setItem('sc-fv-scale', fvScaleMode ? '1' : '0');
             renderFleetView();
         });
 
@@ -1248,6 +1249,8 @@
     document.addEventListener('DOMContentLoaded', function () {
         loadFleet();
         loadUsers();
+        fvScaleMode = localStorage.getItem('sc-fv-scale') === '1';
+        document.getElementById('fv-scale-toggle').checked = fvScaleMode;
         initEvents();
         updateStats();
         renderUsersTab();
