@@ -718,10 +718,14 @@
         localStorage.setItem('sc-fv-positions', JSON.stringify(positions));
     }
 
-    function renderFleetView() {
+    async function renderFleetView() {
         const canvas = document.getElementById('fv-canvas');
         const emptyEl = document.getElementById('fv-empty');
         const wrapperEl = document.getElementById('fv-wrapper');
+
+        if (allShips.length === 0) {
+            await fetchShips();
+        }
 
         cleanupFvRenderers();
 
