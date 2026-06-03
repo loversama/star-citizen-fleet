@@ -1180,6 +1180,13 @@
         .fv-empty .hint {
             font-size: 0.85rem;
         }
+
+        #fv-scale-toggle.active {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: white;
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
     </style>
 </head>
 <body>
@@ -1289,6 +1296,7 @@
                 <button class="btn btn-secondary" id="fv-zoom-in">+ Zoom</button>
                 <button class="btn btn-secondary" id="fv-zoom-out">- Zoom</button>
                 <span style="font-size:0.8rem;color:var(--text-muted);margin-left:0.5rem" id="fv-zoom-label">100%</span>
+                <button class="btn btn-secondary" id="fv-scale-toggle" style="margin-left:0.75rem">&#x2922; Scale Ships</button>
                 <div style="flex:1"></div>
                 <button class="btn btn-primary" id="fv-screenshot">&#128247; Screenshot</button>
             </div>

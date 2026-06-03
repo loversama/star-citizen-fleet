@@ -283,6 +283,8 @@
             name: ship.name,
             manufacturer: ship.manufacturer?.name || 'Unknown',
             size: ship.metrics?.size || '',
+            length: ship.metrics?.length || 0,
+            beam: ship.metrics?.beam || 0,
             focus: ship.focus || '',
             pledgePrice: ship.pledgePrice || 0,
             crew: ship.crew || {},
@@ -700,7 +702,11 @@
     // ── Fleet View ──
 
     let fvZoom = 1;
+    let fvScaleMode = false;
     const fvMiniRenderers = [];
+    const FV_BASE_SIZE = 140;
+    const FV_MIN_SIZE = 50;
+    const FV_MAX_SIZE = 400;
 
     function getFleetViewPositions() {
         try {
@@ -732,14 +738,28 @@
         const positions = getFleetViewPositions();
         canvas.innerHTML = '<div class="fv-grid-bg"></div>';
 
-        const CARD_W = 160;
         const CARD_GAP = 20;
-        const COLS = Math.floor(2800 / (CARD_W + CARD_GAP));
+
+        var lengths = fleet.map(function (f) { return f.length || 0; }).filter(function (l) { return l > 0; });
+        var maxLength = lengths.length > 0 ? Math.max.apply(null, lengths) : 1;
+        var minLength = lengths.length > 0 ? Math.min.apply(null, lengths) : 1;
+
+        function getScaledSize(shipLength) {
+            if (!fvScaleMode || !shipLength || shipLength <= 0) return FV_BASE_SIZE;
+            var ratio = shipLength / maxLength;
+            var scaled = FV_MIN_SIZE + ratio * (FV_MAX_SIZE - FV_MIN_SIZE);
+            return Math.round(scaled);
+        }
+
+        var defaultCardW = fvScaleMode ? 200 : 160;
+        var COLS = Math.floor(2800 / (defaultCardW + CARD_GAP + 40));
 
         fleet.forEach(function (item, idx) {
             const el = document.createElement('div');
             el.className = 'fv-ship';
             el.dataset.fleetId = item.id;
+
+            var holoSize = getScaledSize(item.length);
 
             let x, y;
             if (positions[item.id]) {
@@ -748,8 +768,8 @@
             } else {
                 const col = idx % COLS;
                 const row = Math.floor(idx / COLS);
-                x = 40 + col * (CARD_W + CARD_GAP);
-                y = 40 + row * (200 + CARD_GAP);
+                x = 40 + col * (defaultCardW + CARD_GAP + 40);
+                y = 40 + row * (defaultCardW + CARD_GAP + 80);
             }
 
             el.style.left = x + 'px';
@@ -760,36 +780,37 @@
                 : '<span style="font-size:0.5rem;color:var(--text-muted)">No crew</span>';
 
             const holoId = 'fv-holo-' + item.id.replace(/[^a-zA-Z0-9]/g, '_');
+            var lengthLabel = item.length ? item.length + 'm' : '';
 
             el.innerHTML =
-                '<div class="fv-ship-inner">' +
-                    '<div class="fv-ship-holo" id="' + holoId + '">' +
+                '<div class="fv-ship-inner" style="min-width:' + (holoSize + 16) + 'px">' +
+                    '<div class="fv-ship-holo" id="' + holoId + '" style="width:' + holoSize + 'px;height:' + holoSize + 'px">' +
                         (item.holo
                             ? '<div class="fv-holo-loading"></div>'
                             : (item.topView || item.image
                                 ? '<img src="' + (item.topView || item.image) + '" alt="' + escapeHtml(item.name) + '">'
                                 : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem">&#128640;</div>')) +
                     '</div>' +
-                    '<div class="fv-ship-name" title="' + escapeHtml(item.name) + '">' + escapeHtml(item.name) + '</div>' +
-                    '<div class="fv-ship-mfr">' + escapeHtml(item.manufacturer) + '</div>' +
-                    '<div class="fv-ship-crew">' + crewHtml + '</div>' +
+                    '<div class="fv-ship-name" title="' + escapeHtml(item.name) + '" style="max-width:' + holoSize + 'px">' + escapeHtml(item.name) + '</div>' +
+                    '<div class="fv-ship-mfr">' + escapeHtml(item.manufacturer) + (lengthLabel ? ' &middot; ' + lengthLabel : '') + '</div>' +
+                    '<div class="fv-ship-crew" style="max-width:' + holoSize + 'px">' + crewHtml + '</div>' +
                 '</div>';
 
             canvas.appendChild(el);
 
             if (item.holo) {
-                loadFvHolo(holoId, item.holo);
+                loadFvHolo(holoId, item.holo, holoSize);
             }
         });
 
         initFvDrag();
     }
 
-    function loadFvHolo(containerId, holoUrl) {
+    function loadFvHolo(containerId, holoUrl, renderSize) {
         var container = document.getElementById(containerId);
         if (!container) return;
 
-        var size = 140;
+        var size = renderSize || FV_BASE_SIZE;
 
         var scene = new THREE.Scene();
         scene.background = new THREE.Color(0x050a12);
@@ -1103,6 +1124,11 @@
             fvZoom = Math.max(0.3, fvZoom - 0.1);
             document.getElementById('fv-canvas').style.transform = 'scale(' + fvZoom + ')';
             document.getElementById('fv-zoom-label').textContent = Math.round(fvZoom * 100) + '%';
+        });
+        document.getElementById('fv-scale-toggle').addEventListener('click', function () {
+            fvScaleMode = !fvScaleMode;
+            this.classList.toggle('active', fvScaleMode);
+            renderFleetView();
         });
 
         // Ship search + filters
