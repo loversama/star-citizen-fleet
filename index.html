@@ -1181,11 +1181,59 @@
             font-size: 0.85rem;
         }
 
-        #fv-scale-toggle.active {
+        .fv-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .fv-toggle input { display: none; }
+
+        .fv-toggle-slider {
+            width: 36px;
+            height: 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            position: relative;
+            transition: all 0.25s;
+        }
+
+        .fv-toggle-slider::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 14px;
+            height: 14px;
+            background: var(--text-muted);
+            border-radius: 50%;
+            transition: all 0.25s;
+        }
+
+        .fv-toggle input:checked + .fv-toggle-slider {
             background: var(--accent-dim);
             border-color: var(--accent);
-            color: white;
-            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .fv-toggle input:checked + .fv-toggle-slider::after {
+            left: 18px;
+            background: var(--accent);
+            box-shadow: 0 0 6px var(--accent);
+        }
+
+        .fv-toggle-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .fv-toggle input:checked ~ .fv-toggle-label {
+            color: var(--accent);
         }
     </style>
 </head>
@@ -1296,7 +1344,11 @@
                 <button class="btn btn-secondary" id="fv-zoom-in">+ Zoom</button>
                 <button class="btn btn-secondary" id="fv-zoom-out">- Zoom</button>
                 <span style="font-size:0.8rem;color:var(--text-muted);margin-left:0.5rem" id="fv-zoom-label">100%</span>
-                <button class="btn btn-secondary" id="fv-scale-toggle" style="margin-left:0.75rem">&#x2922; Scale Ships</button>
+                <label class="fv-toggle" style="margin-left:0.75rem">
+                    <input type="checkbox" id="fv-scale-toggle">
+                    <span class="fv-toggle-slider"></span>
+                    <span class="fv-toggle-label">Scale Ships</span>
+                </label>
                 <div style="flex:1"></div>
                 <button class="btn btn-primary" id="fv-screenshot">&#128247; Screenshot</button>
             </div>

@@ -1132,9 +1132,8 @@
             document.getElementById('fv-canvas').style.transform = 'scale(' + fvZoom + ')';
             document.getElementById('fv-zoom-label').textContent = Math.round(fvZoom * 100) + '%';
         });
-        document.getElementById('fv-scale-toggle').addEventListener('click', function () {
-            fvScaleMode = !fvScaleMode;
-            this.classList.toggle('active', fvScaleMode);
+        document.getElementById('fv-scale-toggle').addEventListener('change', function () {
+            fvScaleMode = this.checked;
             renderFleetView();
         });
 
