@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Star Citizen Fleet Manager</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;900&family=Rajdhani:wght@300;400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e17;
+            --bg-secondary: #111827;
+            --bg-card: #1a2235;
+            --bg-card-hover: #1f2a40;
+            --bg-modal: #0f1623;
+            --border: #2a3a55;
+            --border-glow: #00d4ff;
+            --text-primary: #e2e8f0;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --accent: #00d4ff;
+            --accent-dim: #0088aa;
+            --accent-glow: rgba(0, 212, 255, 0.15);
+            --danger: #ef4444;
+            --danger-dim: #991b1b;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --gold: #fbbf24;
+            --purple: #a855f7;
+            --scrollbar-bg: #111827;
+            --scrollbar-thumb: #2a3a55;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: var(--scrollbar-bg); }
+        ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--accent-dim); }
+
+        .scanline-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 212, 255, 0.015) 2px,
+                rgba(0, 212, 255, 0.015) 4px
+            );
+        }
+
+        header {
+            background: linear-gradient(180deg, rgba(0, 212, 255, 0.08) 0%, transparent 100%);
+            border-bottom: 1px solid var(--border);
+            padding: 1rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            backdrop-filter: blur(20px);
+        }
+
+        .header-content {
+            max-width: 1800px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .logo-icon {
+            width: 42px;
+            height: 42px;
+            position: relative;
+        }
+
+        .logo-icon svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 0 8px var(--accent));
+        }
+
+        .logo h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, var(--accent), #7dd3fc);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: none;
+        }
+
+        .logo .subtitle {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .header-stats {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 0.25rem 0.75rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            background: rgba(0, 212, 255, 0.03);
+        }
+
+        .stat-box .value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        .stat-box .label {
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .tabs-bar {
+            display: flex;
+            gap: 0;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+
+        .tab-btn {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            padding: 0.75rem 1.5rem;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.2s;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-secondary);
+            background: rgba(0, 212, 255, 0.03);
+        }
+
+        .tab-btn.active {
+            color: var(--accent);
+        }
+
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--accent);
+            box-shadow: 0 0 8px var(--accent);
+        }
+
+        .tab-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 20px;
+            height: 20px;
+            padding: 0 6px;
+            border-radius: 10px;
+            background: var(--accent-dim);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            margin-left: 6px;
+        }
+
+        main {
+            max-width: 1800px;
+            margin: 0 auto;
+            padding: 1.5rem 2rem;
+        }
+
+        .tab-panel {
+            display: none;
+        }
+
+        .tab-panel.active {
+            display: block;
+        }
+
+        /* CONTROLS BAR */
+        .controls-bar {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 0.6rem 1rem 0.6rem 2.5rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 2px var(--accent-glow);
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-box .search-icon {
+            position: absolute;
+            left: 0.75rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        select, .btn {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        select {
+            padding: 0.6rem 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            outline: none;
+            cursor: pointer;
+        }
+
+        select:focus {
+            border-color: var(--accent);
+        }
+
+        .btn {
+            padding: 0.6rem 1rem;
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--accent-dim), var(--accent));
+            color: var(--bg-primary);
+            border-color: var(--accent);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 0 12px var(--accent-glow);
+            filter: brightness(1.1);
+        }
+
+        .btn-secondary {
+            background: var(--bg-card);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-card-hover);
+            border-color: var(--accent-dim);
+        }
+
+        .btn-danger {
+            background: var(--danger-dim);
+            color: #fca5a5;
+            border-color: var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: var(--danger);
+            color: white;
+        }
+
+        .btn-sm {
+            padding: 0.3rem 0.6rem;
+            font-size: 0.8rem;
+        }
+
+        .btn-icon {
+            width: 32px;
+            height: 32px;
+            padding: 0;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-icon:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        /* SHIP GRID */
+        .ship-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+
+        .ship-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+            transition: all 0.25s;
+            position: relative;
+        }
+
+        .ship-card:hover {
+            border-color: var(--accent-dim);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 212, 255, 0.08);
+        }
+
+        .ship-card-image {
+            width: 100%;
+            height: 160px;
+            object-fit: cover;
+            background: var(--bg-secondary);
+            display: block;
+        }
+
+        .ship-card-image-placeholder {
+            width: 100%;
+            height: 160px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, var(--bg-secondary), var(--bg-card));
+            color: var(--text-muted);
+            font-size: 2.5rem;
+        }
+
+        .ship-card-body {
+            padding: 0.75rem;
+        }
+
+        .ship-card-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.25rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .ship-card-manufacturer {
+            font-size: 0.75rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 0.4rem;
+        }
+
+        .ship-card-tags {
+            display: flex;
+            gap: 0.35rem;
+            flex-wrap: wrap;
+            margin-bottom: 0.5rem;
+        }
+
+        .tag {
+            font-size: 0.65rem;
+            padding: 0.15rem 0.4rem;
+            border-radius: 3px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 600;
+        }
+
+        .tag-size {
+            background: rgba(168, 85, 247, 0.15);
+            color: var(--purple);
+            border: 1px solid rgba(168, 85, 247, 0.3);
+        }
+
+        .tag-focus {
+            background: rgba(251, 191, 36, 0.1);
+            color: var(--gold);
+            border: 1px solid rgba(251, 191, 36, 0.25);
+        }
+
+        .tag-status {
+            background: rgba(34, 197, 94, 0.1);
+            color: var(--success);
+            border: 1px solid rgba(34, 197, 94, 0.25);
+        }
+
+        .tag-status.not-ready {
+            color: var(--warning);
+            background: rgba(245, 158, 11, 0.1);
+            border-color: rgba(245, 158, 11, 0.25);
+        }
+
+        .ship-card-stats {
+            display: flex;
+            gap: 0.75rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.5rem;
+        }
+
+        .ship-card-stats span {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+        }
+
+        .ship-card-price {
+            font-family: 'Share Tech Mono', monospace;
+            font-size: 0.8rem;
+            color: var(--gold);
+        }
+
+        .ship-card-actions {
+            display: flex;
+            gap: 0.4rem;
+            margin-top: 0.5rem;
+        }
+
+        .ship-card-actions .btn {
+            flex: 1;
+            justify-content: center;
+            font-size: 0.75rem;
+            padding: 0.4rem;
+        }
+
+        /* FLEET VIEW */
+        .fleet-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+            gap: 1.25rem;
+        }
+
+        .fleet-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            overflow: hidden;
+            transition: all 0.25s;
+        }
+
+        .fleet-card:hover {
+            border-color: var(--accent-dim);
+        }
+
+        .fleet-card-header {
+            display: flex;
+            align-items: stretch;
+        }
+
+        .fleet-card-image-wrap {
+            width: 120px;
+            min-height: 100px;
+            flex-shrink: 0;
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .fleet-card-image-wrap img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .fleet-card-image-wrap .holo-badge {
+            position: absolute;
+            bottom: 4px;
+            right: 4px;
+            background: rgba(0, 0, 0, 0.7);
+            color: var(--accent);
+            font-size: 0.55rem;
+            padding: 2px 5px;
+            border-radius: 3px;
+            font-family: 'Share Tech Mono', monospace;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: 1px solid var(--accent-dim);
+        }
+
+        .fleet-card-info {
+            flex: 1;
+            padding: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .fleet-card-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 600;
+            margin-bottom: 0.15rem;
+        }
+
+        .fleet-card-mfr {
+            font-size: 0.7rem;
+            color: var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .fleet-card-meta {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-top: 0.4rem;
+        }
+
+        .fleet-card-actions-row {
+            display: flex;
+            gap: 0.4rem;
+            margin-top: 0.5rem;
+        }
+
+        .fleet-card-body {
+            padding: 0 0.75rem 0.75rem;
+        }
+
+        .crew-section {
+            margin-top: 0.5rem;
+        }
+
+        .crew-section-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin-bottom: 0.35rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .crew-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.35rem;
+        }
+
+        .crew-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.2rem 0.5rem;
+            background: rgba(0, 212, 255, 0.08);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .crew-chip .remove-crew {
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            line-height: 1;
+            transition: color 0.2s;
+        }
+
+        .crew-chip .remove-crew:hover {
+            color: var(--danger);
+        }
+
+        .crew-empty {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-style: italic;
+        }
+
+        .assign-crew-row {
+            display: flex;
+            gap: 0.35rem;
+            margin-top: 0.35rem;
+        }
+
+        .assign-crew-row select {
+            flex: 1;
+            font-size: 0.8rem;
+            padding: 0.3rem 0.5rem;
+        }
+
+        /* USERS TAB */
+        .users-panel {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+        }
+
+        .users-list-panel {
+            flex: 1;
+            min-width: 300px;
+        }
+
+        .users-summary-panel {
+            flex: 2;
+            min-width: 400px;
+        }
+
+        .add-user-form {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .add-user-form input {
+            flex: 1;
+            padding: 0.6rem 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            color: var(--text-primary);
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.95rem;
+            outline: none;
+        }
+
+        .add-user-form input:focus {
+            border-color: var(--accent);
+        }
+
+        .user-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0.6rem 0.75rem;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            margin-bottom: 0.4rem;
+            transition: border-color 0.2s;
+        }
+
+        .user-row:hover {
+            border-color: var(--accent-dim);
+        }
+
+        .user-row-info {
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-dim), var(--purple));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .user-row-name {
+            font-weight: 600;
+        }
+
+        .user-row-ships {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        .user-assignment-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .user-assignment-card h3 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .user-ship-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+
+        .user-ship-chip {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+
+        .user-ship-chip img {
+            width: 40px;
+            height: 28px;
+            object-fit: cover;
+            border-radius: 3px;
+        }
+
+        /* MODAL */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.75);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            backdrop-filter: blur(4px);
+        }
+
+        .modal-overlay.open {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-modal);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 700px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 0 40px rgba(0, 212, 255, 0.1);
+        }
+
+        .modal-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .modal-header h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 1.5rem;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .modal-close:hover {
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 1.25rem;
+        }
+
+        /* HOLO VIEWER */
+        .holo-viewer-container {
+            width: 100%;
+            height: 350px;
+            background: radial-gradient(ellipse at center, #0a1628 0%, #050a12 100%);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+            margin-bottom: 1rem;
+        }
+
+        .holo-viewer-container canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .holo-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--accent);
+        }
+
+        .holo-loading .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 0.5rem;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .holo-error {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .holo-controls {
+            position: absolute;
+            bottom: 8px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 0.5rem;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 0.3rem 0.6rem;
+            border-radius: 4px;
+            font-size: 0.65rem;
+            color: var(--text-muted);
+            font-family: 'Share Tech Mono', monospace;
+        }
+
+        /* LOADING */
+        .loading-screen {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4rem;
+            gap: 1rem;
+        }
+
+        .loading-screen .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .loading-screen p {
+            font-family: 'Share Tech Mono', monospace;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+        }
+
+        .no-results {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .no-results p {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 768px) {
+            header { padding: 0.75rem 1rem; }
+            main { padding: 1rem; }
+            .logo h1 { font-size: 1rem; }
+            .header-stats { gap: 0.75rem; }
+            .stat-box .value { font-size: 1rem; }
+            .ship-grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
+            .fleet-grid { grid-template-columns: 1fr; }
+            .users-panel { flex-direction: column; }
+        }
+
+        /* SECTION HEADER */
+        .section-header {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            font-weight: 600;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .fleet-empty {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .fleet-empty p {
+            font-size: 1rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .fleet-empty .hint {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            bottom: 1.5rem;
+            right: 1.5rem;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .toast {
+            padding: 0.6rem 1rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            color: var(--text-primary);
+            animation: toastIn 0.3s ease;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+
+        .toast.success { border-color: var(--success); }
+        .toast.error { border-color: var(--danger); }
+        .toast.info { border-color: var(--accent); }
+
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fleet-card .quantity-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(0, 0, 0, 0.7);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        /* FLEET VIEW */
+        .fv-wrapper {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 200px);
+            min-height: 500px;
+            overflow: auto;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: #060b14;
+        }
+
+        .fv-canvas {
+            position: relative;
+            width: 3000px;
+            height: 2000px;
+            transform-origin: 0 0;
+        }
+
+        .fv-grid-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image:
+                linear-gradient(rgba(0, 212, 255, 0.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 212, 255, 0.04) 1px, transparent 1px);
+            background-size: 40px 40px;
+            pointer-events: none;
+        }
+
+        .fv-ship {
+            position: absolute;
+            cursor: grab;
+            user-select: none;
+            transition: box-shadow 0.2s;
+            z-index: 1;
+        }
+
+        .fv-ship:hover {
+            z-index: 10;
+        }
+
+        .fv-ship.dragging {
+            cursor: grabbing;
+            z-index: 100;
+            box-shadow: 0 0 30px rgba(0, 212, 255, 0.3);
+        }
+
+        .fv-ship-inner {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background: rgba(10, 15, 25, 0.85);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 6px;
+            min-width: 120px;
+        }
+
+        .fv-ship:hover .fv-ship-inner {
+            border-color: var(--accent-dim);
+        }
+
+        .fv-ship.dragging .fv-ship-inner {
+            border-color: var(--accent);
+        }
+
+        .fv-ship-holo {
+            width: 140px;
+            height: 140px;
+            position: relative;
+            overflow: hidden;
+            border-radius: 4px;
+            background: radial-gradient(ellipse at center, #0a1628 0%, #050a12 100%);
+        }
+
+        .fv-ship-holo canvas {
+            width: 100% !important;
+            height: 100% !important;
+            display: block;
+        }
+
+        .fv-ship-holo img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .fv-ship-holo .fv-holo-loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        .fv-ship-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.65rem;
+            font-weight: 600;
+            color: var(--accent);
+            text-align: center;
+            margin-top: 4px;
+            max-width: 140px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .fv-ship-mfr {
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            text-align: center;
+        }
+
+        .fv-ship-crew {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2px;
+            justify-content: center;
+            margin-top: 3px;
+            max-width: 140px;
+        }
+
+        .fv-crew-tag {
+            font-size: 0.55rem;
+            padding: 1px 5px;
+            background: rgba(0, 212, 255, 0.1);
+            border: 1px solid rgba(0, 212, 255, 0.2);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .fv-empty {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+        }
+
+        .fv-empty .hint {
+            font-size: 0.85rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="scanline-overlay"></div>
+
+    <header>
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 100 100" fill="none">
+                        <polygon points="50,5 95,30 95,70 50,95 5,70 5,30" stroke="currentColor" stroke-width="2" fill="none" style="color: var(--accent)"/>
+                        <polygon points="50,20 78,35 78,65 50,80 22,65 22,35" stroke="currentColor" stroke-width="1.5" fill="rgba(0,212,255,0.05)" style="color: var(--accent)"/>
+                        <circle cx="50" cy="50" r="8" fill="var(--accent)" opacity="0.8"/>
+                        <line x1="50" y1="42" x2="50" y2="20" stroke="var(--accent)" stroke-width="1" opacity="0.5"/>
+                        <line x1="57" y1="46" x2="78" y2="35" stroke="var(--accent)" stroke-width="1" opacity="0.5"/>
+                        <line x1="57" y1="54" x2="78" y2="65" stroke="var(--accent)" stroke-width="1" opacity="0.5"/>
+                        <line x1="50" y1="58" x2="50" y2="80" stroke="var(--accent)" stroke-width="1" opacity="0.5"/>
+                        <line x1="43" y1="54" x2="22" y2="65" stroke="var(--accent)" stroke-width="1" opacity="0.5"/>
+                        <line x1="43" y1="46" x2="22" y2="35" stroke="var(--accent)" stroke-width="1" opacity="0.5"/>
+                    </svg>
+                </div>
+                <div>
+                    <h1>Fleet Command</h1>
+                    <div class="subtitle">Star Citizen Fleet Manager</div>
+                </div>
+            </div>
+            <div class="header-stats">
+                <div class="stat-box">
+                    <div class="value" id="stat-ships">--</div>
+                    <div class="label">Ships DB</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="stat-fleet">0</div>
+                    <div class="label">In Fleet</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="stat-crew">0</div>
+                    <div class="label">Crew</div>
+                </div>
+                <div class="stat-box">
+                    <div class="value" id="stat-value">$0</div>
+                    <div class="label">Fleet Value</div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="tabs-bar">
+        <button class="tab-btn active" data-tab="ships">Ships Database</button>
+        <button class="tab-btn" data-tab="fleet">My Fleet <span class="tab-badge" id="fleet-badge">0</span></button>
+        <button class="tab-btn" data-tab="fleetview">Fleet View</button>
+        <button class="tab-btn" data-tab="users">Crew Management</button>
+    </div>
+
+    <main>
+        <!-- SHIPS DATABASE TAB -->
+        <div class="tab-panel active" id="tab-ships">
+            <div class="controls-bar">
+                <div class="search-box">
+                    <span class="search-icon">&#128269;</span>
+                    <input type="text" id="ship-search" placeholder="Search ships by name, manufacturer, or focus...">
+                </div>
+                <select id="filter-manufacturer">
+                    <option value="">All Manufacturers</option>
+                </select>
+                <select id="filter-size">
+                    <option value="">All Sizes</option>
+                </select>
+                <select id="filter-classification">
+                    <option value="">All Types</option>
+                </select>
+                <select id="filter-status">
+                    <option value="">All Status</option>
+                    <option value="flight-ready">Flight Ready</option>
+                    <option value="not-ready">Not Ready</option>
+                </select>
+            </div>
+            <div id="ships-container">
+                <div class="loading-screen">
+                    <div class="spinner"></div>
+                    <p>Establishing uplink to FleetYards database...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- MY FLEET TAB -->
+        <div class="tab-panel" id="tab-fleet">
+            <div class="controls-bar">
+                <div class="search-box">
+                    <span class="search-icon">&#128269;</span>
+                    <input type="text" id="fleet-search" placeholder="Search your fleet...">
+                </div>
+                <button class="btn btn-danger btn-sm" id="clear-fleet-btn">Clear Fleet</button>
+            </div>
+            <div id="fleet-container">
+                <div class="fleet-empty">
+                    <p>Your fleet is empty</p>
+                    <p class="hint">Go to Ships Database and add ships to your fleet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- FLEET VIEW TAB -->
+        <div class="tab-panel" id="tab-fleetview">
+            <div class="controls-bar">
+                <button class="btn btn-primary" id="fv-auto-arrange">Auto Arrange</button>
+                <button class="btn btn-secondary" id="fv-zoom-in">+ Zoom</button>
+                <button class="btn btn-secondary" id="fv-zoom-out">- Zoom</button>
+                <span style="font-size:0.8rem;color:var(--text-muted);margin-left:0.5rem" id="fv-zoom-label">100%</span>
+                <div style="flex:1"></div>
+                <button class="btn btn-primary" id="fv-screenshot">&#128247; Screenshot</button>
+            </div>
+            <div class="fv-wrapper" id="fv-wrapper">
+                <div class="fv-canvas" id="fv-canvas">
+                    <div class="fv-grid-bg"></div>
+                </div>
+            </div>
+            <div class="fv-empty" id="fv-empty" style="display:none">
+                <p>Your fleet is empty</p>
+                <p class="hint">Add ships from the Ships Database tab first</p>
+            </div>
+        </div>
+
+        <!-- CREW TAB -->
+        <div class="tab-panel" id="tab-users">
+            <div class="users-panel">
+                <div class="users-list-panel">
+                    <div class="section-header">Crew Roster</div>
+                    <div class="add-user-form">
+                        <input type="text" id="new-user-input" placeholder="Enter crew member name...">
+                        <button class="btn btn-primary" id="add-user-btn">Add Crew</button>
+                    </div>
+                    <div id="users-list"></div>
+                </div>
+                <div class="users-summary-panel">
+                    <div class="section-header">Ship Assignments</div>
+                    <div id="users-assignments"></div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- HOLO VIEWER MODAL -->
+    <div class="modal-overlay" id="holo-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <h2 id="holo-modal-title">Holo Viewer</h2>
+                <button class="modal-close" id="holo-modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="holo-viewer-container" id="holo-viewer">
+                    <div class="holo-loading" id="holo-loading">
+                        <div class="spinner"></div>
+                        <p>Loading holographic model...</p>
+                    </div>
+                    <div class="holo-error" id="holo-error" style="display:none">
+                        <p>No holographic model available for this vessel</p>
+                    </div>
+                    <div class="holo-controls">
+                        <span>Drag to rotate</span>
+                        <span>|</span>
+                        <span>Scroll to zoom</span>
+                    </div>
+                </div>
+                <div id="holo-ship-details"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/DRACOLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
