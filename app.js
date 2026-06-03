@@ -705,8 +705,8 @@
     let fvScaleMode = false;
     const fvMiniRenderers = [];
     const FV_BASE_SIZE = 140;
-    const FV_MIN_SIZE = 50;
-    const FV_MAX_SIZE = 400;
+    const FV_SCALE_PPM = 2.5;
+    const FV_SCALE_MIN = 30;
 
     function getFleetViewPositions() {
         try {
@@ -744,43 +744,52 @@
 
         const CARD_GAP = 20;
 
-        function resolveLength(item) {
-            if (item.length && item.length > 0) return item.length;
-            var dbShip = allShips.find(function (s) { return s.slug === item.slug; });
-            if (dbShip && dbShip.metrics && dbShip.metrics.length) return dbShip.metrics.length;
-            return 0;
+        function resolveMetrics(item) {
+            var len = item.length || 0;
+            var beam = item.beam || 0;
+            if ((!len || !beam) && allShips.length > 0) {
+                var dbShip = allShips.find(function (s) { return s.slug === item.slug; });
+                if (dbShip && dbShip.metrics) {
+                    if (!len) len = dbShip.metrics.length || 0;
+                    if (!beam) beam = dbShip.metrics.beam || 0;
+                }
+            }
+            if (!beam && len) beam = len * 0.4;
+            return { length: len, beam: beam };
         }
 
-        var lengths = fleet.map(function (f) { return resolveLength(f); }).filter(function (l) { return l > 0; });
-        var maxLength = lengths.length > 0 ? Math.max.apply(null, lengths) : 1;
-
-        function getScaledSize(shipLength) {
-            if (!fvScaleMode || !shipLength || shipLength <= 0) return FV_BASE_SIZE;
-            var ratio = shipLength / maxLength;
-            var scaled = FV_MIN_SIZE + ratio * (FV_MAX_SIZE - FV_MIN_SIZE);
-            return Math.round(scaled);
+        function getScaledDimensions(metrics) {
+            if (!fvScaleMode || !metrics.length) return { w: FV_BASE_SIZE, h: FV_BASE_SIZE };
+            var h = Math.max(FV_SCALE_MIN, Math.round(metrics.length * FV_SCALE_PPM));
+            var w = Math.max(FV_SCALE_MIN, Math.round(metrics.beam * FV_SCALE_PPM));
+            return { w: w, h: h };
         }
-
-        var defaultCardW = fvScaleMode ? 200 : 160;
-        var COLS = Math.floor(2800 / (defaultCardW + CARD_GAP + 40));
 
         fleet.forEach(function (item, idx) {
             const el = document.createElement('div');
             el.className = 'fv-ship';
             el.dataset.fleetId = item.id;
 
-            var shipLength = resolveLength(item);
-            var holoSize = getScaledSize(shipLength);
+            var metrics = resolveMetrics(item);
+            var dims = getScaledDimensions(metrics);
 
             let x, y;
             if (positions[item.id]) {
                 x = positions[item.id].x;
                 y = positions[item.id].y;
             } else {
-                const col = idx % COLS;
-                const row = Math.floor(idx / COLS);
-                x = 40 + col * (defaultCardW + CARD_GAP + 40);
-                y = 40 + row * (defaultCardW + CARD_GAP + 80);
+                if (!positions._autoX) { positions._autoX = 40; positions._autoY = 40; positions._rowH = 0; }
+                var totalW = dims.w + 40;
+                var totalH = dims.h + 70;
+                if (positions._autoX + totalW > 2900) {
+                    positions._autoX = 40;
+                    positions._autoY += positions._rowH + 20;
+                    positions._rowH = 0;
+                }
+                x = positions._autoX;
+                y = positions._autoY;
+                positions._autoX += totalW + 20;
+                if (totalH > positions._rowH) positions._rowH = totalH;
             }
 
             el.style.left = x + 'px';
@@ -791,26 +800,27 @@
                 : '<span style="font-size:0.5rem;color:var(--text-muted)">No crew</span>';
 
             const holoId = 'fv-holo-' + item.id.replace(/[^a-zA-Z0-9]/g, '_');
-            var lengthLabel = shipLength ? shipLength + 'm' : '';
+            var lengthLabel = metrics.length ? metrics.length + 'm' : '';
+            var cardMaxW = Math.max(dims.w, dims.h);
 
             el.innerHTML =
-                '<div class="fv-ship-inner" style="min-width:' + (holoSize + 16) + 'px">' +
-                    '<div class="fv-ship-holo" id="' + holoId + '" style="width:' + holoSize + 'px;height:' + holoSize + 'px">' +
+                '<div class="fv-ship-inner" style="min-width:' + (dims.w + 16) + 'px">' +
+                    '<div class="fv-ship-holo" id="' + holoId + '" style="width:' + dims.w + 'px;height:' + dims.h + 'px">' +
                         (item.holo
                             ? '<div class="fv-holo-loading"></div>'
                             : (item.topView || item.image
                                 ? '<img src="' + (item.topView || item.image) + '" alt="' + escapeHtml(item.name) + '">'
                                 : '<div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;font-size:2rem">&#128640;</div>')) +
                     '</div>' +
-                    '<div class="fv-ship-name" title="' + escapeHtml(item.name) + '" style="max-width:' + holoSize + 'px">' + escapeHtml(item.name) + '</div>' +
+                    '<div class="fv-ship-name" title="' + escapeHtml(item.name) + '" style="max-width:' + cardMaxW + 'px">' + escapeHtml(item.name) + '</div>' +
                     '<div class="fv-ship-mfr">' + escapeHtml(item.manufacturer) + (lengthLabel ? ' &middot; ' + lengthLabel : '') + '</div>' +
-                    '<div class="fv-ship-crew" style="max-width:' + holoSize + 'px">' + crewHtml + '</div>' +
+                    '<div class="fv-ship-crew" style="max-width:' + cardMaxW + 'px">' + crewHtml + '</div>' +
                 '</div>';
 
             canvas.appendChild(el);
 
             if (item.holo) {
-                loadFvHolo(holoId, item.holo, holoSize);
+                loadFvHolo(holoId, item.holo, Math.max(dims.w, dims.h));
             }
         });
 
@@ -1002,21 +1012,7 @@
     }
 
     function autoArrangeFleet() {
-        var positions = {};
-        var CARD_W = 160;
-        var CARD_GAP = 20;
-        var COLS = Math.floor(2800 / (CARD_W + CARD_GAP));
-
-        fleet.forEach(function (item, idx) {
-            var col = idx % COLS;
-            var row = Math.floor(idx / COLS);
-            positions[item.id] = {
-                x: 40 + col * (CARD_W + CARD_GAP),
-                y: 40 + row * (220 + CARD_GAP)
-            };
-        });
-
-        saveFleetViewPositions(positions);
+        saveFleetViewPositions({});
         renderFleetView();
         toast('Fleet arranged', 'info');
     }
