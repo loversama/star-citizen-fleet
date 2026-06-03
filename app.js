@@ -659,8 +659,9 @@
             holoDracoLoader.dispose();
         }
         holoDracoLoader = new THREE.DRACOLoader();
-        holoDracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
-        holoDracoLoader.setDecoderConfig({ type: 'js' });
+        holoDracoLoader.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/');
+
+
 
         try {
             const arrayBuffer = await fetchHoloModel(url);
@@ -782,8 +783,7 @@
     function getSharedDraco() {
         if (!fvSharedDraco) {
             fvSharedDraco = new THREE.DRACOLoader();
-            fvSharedDraco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/');
-            fvSharedDraco.setDecoderConfig({ type: 'js' });
+            fvSharedDraco.setDecoderPath('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/libs/draco/gltf/');
         }
         return fvSharedDraco;
     }
