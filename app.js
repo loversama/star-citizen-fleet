@@ -712,11 +712,20 @@
 
     async function fetchHoloModel(url) {
         if (holoCache[url]) return holoCache[url];
-        var response = await fetch(url, { mode: 'cors', redirect: 'follow' });
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        var buf = await response.arrayBuffer();
-        holoCache[url] = buf;
-        return buf;
+        var controller = new AbortController();
+        var timeout = setTimeout(function () { controller.abort(); }, 15000);
+        try {
+            var response = await fetch(url, { mode: 'cors', redirect: 'follow', signal: controller.signal });
+            clearTimeout(timeout);
+            if (!response.ok) throw new Error('HTTP ' + response.status);
+            var buf = await response.arrayBuffer();
+            holoCache[url] = buf;
+            return buf;
+        } catch (e) {
+            clearTimeout(timeout);
+            if (e.name === 'AbortError') throw new Error('Timed out loading model');
+            throw e;
+        }
     }
 
     let fvZoom = 1;
